@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface User {
   id: string
@@ -15,6 +16,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   isAuthenticated: boolean
+  signUp: (email: string, password: string) => Promise<{ error?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,43 +27,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check for existing session on mount
-    const checkAuthStatus = () => {
+    const checkAuthStatus = async () => {
       try {
-        const storedUser = localStorage.getItem('aistore_user')
-        if (storedUser) {
-          setUser(JSON.parse(storedUser))
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error checking session:', error.message)
+        } else if (session?.user) {
+          const supabaseUser = session.user
+          const user: User = {
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+            role: 'admin' // Default role for all authenticated users
+          }
+          setUser(user)
         }
       } catch (error) {
         console.error('Error checking auth status:', error)
-        localStorage.removeItem('aistore_user')
       } finally {
         setIsLoading(false)
       }
     }
 
     checkAuthStatus()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id)
+      
+      if (session?.user) {
+        const supabaseUser = session.user
+        const user: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+          role: 'admin' // Default role for all authenticated users
+        }
+        setUser(user)
+      } else {
+        setUser(null)
+      }
+      
+      setIsLoading(false)
+    })
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock authentication - in real app, this would be an API call
-      if (email && password) {
-        const mockUser: User = {
-          id: '1',
-          email,
-          name: email.split('@')[0],
-          role: 'admin'
-        }
-        
-        setUser(mockUser)
-        localStorage.setItem('aistore_user', JSON.stringify(mockUser))
-        return true
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (error) {
+        console.error('Login error:', error.message)
+        return false
       }
-      return false
+
+      // User will be set via onAuthStateChange
+      return true
     } catch (error) {
       console.error('Login error:', error)
       return false
@@ -70,9 +101,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('aistore_user')
+  const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: email.split('@')[0] // Use email prefix as default name
+          }
+        }
+      })
+
+      if (error) {
+        console.error('Sign up error:', error.message)
+        return { error: error.message }
+      }
+
+      // User will be set via onAuthStateChange if email confirmation is disabled
+      return {}
+    } catch (error) {
+      console.error('Sign up error:', error)
+      return { error: 'An unexpected error occurred' }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Logout error:', error.message)
+      }
+      // User will be set to null via onAuthStateChange
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   const value = {
@@ -81,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isAuthenticated: !!user,
+    signUp,
   }
 
   return (

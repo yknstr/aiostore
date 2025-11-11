@@ -6,32 +6,25 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
 import { AppProviders } from '@/contexts/AppProviders'
 import { MobileNav } from '@/components/layout/mobile-nav'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
+  const { user, isLoading, isAuthenticated } = useAuth()
 
   useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = () => {
-      const user = localStorage.getItem('aiostore_user')
-      if (!user) {
-        router.push('/login')
-        return false
-      }
-      return true
+    // Redirect to login if not authenticated
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login')
     }
+  }, [isLoading, isAuthenticated, router])
 
-    if (checkAuth()) {
-      setIsLoading(false)
-    }
-  }, [router])
-
+  // Show loading spinner while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -41,6 +34,11 @@ export default function DashboardLayout({
         </div>
       </div>
     )
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null
   }
 
   return (

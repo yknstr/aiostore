@@ -597,6 +597,263 @@ console.log('Orders source:', featureFlags.orders)
 
 **Phase 2 ensures seamless transition between mock and real data sources while maintaining identical UI experience and zero downtime.**
 
+
+## 🔐 Phase 3 Authentication Setup (Supabase Auth)
+
+### Phase 3 Overview
+
+**Version:** 1.5.0  
+**Phase:** Auth + Limited Writes (Phase 3) - **IN PROGRESS**  
+**Purpose:** Enable Supabase authentication and limited write operations via service layer  
+**Architecture:** Real Auth + dry→live safety switch with RLS  
+
+### 🚀 Authentication Features
+
+#### Supabase Auth Integration
+- **Email/Password Authentication**: Sign up and sign in functionality
+- **Session Management**: Automatic session handling with auto-refresh
+- **Protected Routes**: Dashboard routes secured by real authentication
+- **Real-time State**: Auth state changes reflected immediately
+- **No Mock Data**: Replaced localStorage mock with Supabase Auth
+
+#### Environment Configuration
+Create `.env.local` with Supabase credentials:
+```bash
+# Supabase Configuration (Phase 3)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Write Mode Configuration (Phase 3)
+WRITE_MODE=dry                    # Options: dry | live
+```
+
+### 🔧 Authentication Setup
+
+#### 1. Supabase Project Setup
+1. Create account at [supabase.com](https://supabase.com)
+2. Create new project
+3. Get your project URL and anon key from Settings > API
+4. Configure Auth settings:
+   - Enable Email confirmations (optional for development)
+   - Set site URL to `http://localhost:3000` (for development)
+
+#### 2. Authentication Testing
+```bash
+# Start the application
+npm run dev
+
+# Navigate to http://localhost:3000
+# Click "Login" or "Register"
+# Test sign up with email/password
+# Verify session persistence across page refreshes
+# Test logout functionality
+```
+
+#### 3. Protected Route Testing
+1. **Without Authentication:**
+   - Navigate to `/dashboard` → should redirect to `/login`
+   - Direct URL access to any protected route should fail
+
+2. **With Authentication:**
+   - Log in successfully → should redirect to `/dashboard`
+   - All dashboard routes should be accessible
+   - Session should persist on page refresh
+   - Logout should clear session and redirect to login
+
+### 🔒 Authentication Methods
+
+#### Sign Up New User
+```typescript
+import { useAuth } from '@/contexts/AuthContext'
+
+const { signUp } = useAuth()
+
+const handleSignUp = async (email: string, password: string) => {
+  const result = await signUp(email, password)
+  if (result.error) {
+    console.error('Sign up failed:', result.error)
+  } else {
+    console.log('Sign up successful!')
+  }
+}
+```
+
+#### Sign In User
+```typescript
+import { useAuth } from '@/contexts/AuthContext'
+
+const { login } = useAuth()
+
+const handleLogin = async (email: string, password: string) => {
+  const success = await login(email, password)
+  if (success) {
+    console.log('Login successful!')
+  } else {
+    console.error('Login failed')
+  }
+}
+```
+
+#### Sign Out User
+```typescript
+import { useAuth } from '@/contexts/AuthContext'
+
+const { logout, user } = useAuth()
+
+const handleLogout = () => {
+  logout()
+  // User will be set to null and redirected
+}
+```
+
+#### Check Authentication Status
+```typescript
+import { useAuth } from '@/contexts/AuthContext'
+
+const { user, isAuthenticated, isLoading } = useAuth()
+
+// Use in components
+if (isLoading) {
+  return <LoadingSpinner />
+}
+
+if (!isAuthenticated) {
+  return <LoginForm />
+}
+
+return <Dashboard user={user} />
+```
+
+### 🧪 Phase 3 M1 Verification Steps
+
+#### Step 1: Environment Setup
+1. **Check `.env.local`** contains required Supabase variables:
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+#### Step 2: Authentication Testing
+```bash
+# Start development server
+npm run dev
+
+# Open http://localhost:3000/login
+# Test the following flows:
+
+# 1. Sign Up Flow
+# - Click "Don't have an account? Sign up"
+# - Enter email/password
+# - Submit form
+# - Should see success message or confirmation required
+
+# 2. Sign In Flow  
+# - Enter valid credentials
+# - Should redirect to /dashboard
+# - User should appear in topbar
+# - Session should persist on page refresh
+
+# 3. Protected Route Access
+# - Navigate to /dashboard/products
+# - Should show products page (authenticated)
+# - Logout and try again
+# - Should redirect to /login
+
+# 4. Session Persistence
+# - Log in and navigate around dashboard
+# - Refresh page
+# - Should remain logged in
+# - Check browser storage for Supabase session
+```
+
+#### Step 3: Console Verification
+Check browser console for authentication logs:
+```
+✅ "Auth state changed: SIGNED_IN [user-id]"
+✅ "Auth state changed: SIGNED_OUT"
+✅ No authentication errors
+✅ Supabase client properly initialized
+```
+
+#### Step 4: UI/UX Verification
+- [ ] Login form displays correctly
+- [ ] Sign up form displays correctly  
+- [ ] Form validation works
+- [ ] Success/error messages appear
+- [ ] Loading states during auth operations
+- [ ] Logout button in topbar dropdown
+- [ ] User info displays in topbar
+- [ ] Redirect behavior works correctly
+
+### 🔄 Rollback Procedure
+
+If Supabase Auth causes issues:
+
+1. **Temporarily disable Supabase Auth:**
+   ```typescript
+   // In src/contexts/AuthContext.tsx, temporarily revert to mock
+   // This allows continued development while fixing issues
+   ```
+
+2. **Or configure development environment:**
+   ```bash
+   # Use mock auth for development
+   # Keep Supabase configuration for production
+   ```
+
+### 📊 Expected Verification Results
+
+#### Success Indicators
+```
+✅ Login redirects to dashboard
+✅ Sign up creates user successfully  
+✅ Session persists on page refresh
+✅ Logout clears session and redirects to login
+✅ Protected routes properly secured
+✅ Real-time auth state updates
+✅ No console errors during authentication
+✅ Supabase Auth properly configured
+```
+
+#### Error Scenarios
+```
+❌ "Invalid API key" → Check Supabase configuration
+❌ "Network error" → Check Supabase project status
+❌ "Invalid credentials" → Verify email/password
+❌ "Email not confirmed" → Check email confirmation settings
+```
+
+### 🛠️ Troubleshooting
+
+#### Common Authentication Issues
+
+**Supabase Connection Failed**
+- Verify `NEXT_PUBLIC_SUPABASE_URL` is correct
+- Check `NEXT_PUBLIC_SUPABASE_ANON_KEY` is valid
+- Ensure Supabase project is active and not paused
+- Check Auth settings in Supabase dashboard
+
+**Session Not Persisting**
+- Verify `persistSession: true` in Supabase client config
+- Check browser storage permissions
+- Clear browser storage and try again
+- Check for conflicting auth libraries
+
+**Protected Routes Not Working**
+- Ensure AuthProvider wraps the application
+- Check that `isAuthenticated` is properly computed
+- Verify dashboard layout uses `useAuth()` hook
+- Check for race conditions in auth state
+
+**Build Errors**
+- Verify Supabase client imports are correct
+- Check TypeScript types match Supabase SDK
+- Clear `.next` directory and rebuild
+- Ensure all auth dependencies are installed
+
+---
+
+**Phase 3 M1 provides real authentication with seamless integration and proper session management.**
 ## 📱 Responsive Design
 
 | Device | Breakpoint | Layout |
