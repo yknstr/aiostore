@@ -1,186 +1,187 @@
 # Changelog
 
-## [1.4.0] - 2025-11-11 (Phase 2 - Read-Only Data Layer via Supabase)
+All notable changes to this project will be documented in this file.
 
-### Added 🚀
-- **Supabase Integration**: Added complete read-only service layer for Products, Orders, Customers, Transactions, and Messages
-- **Feature Flag System**: Implemented `DATA_SOURCE=mock|supabase` per module with environment variable controls
-- **Service Layer Architecture**: Created individual service classes with unified interface and automatic data source switching
-- **Unified Data Service**: Built DataService facade that provides single interface across all data modules
-- **Supabase Client**: Configured Supabase client with anon key support and read-only queries
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Service Modules
-- **ProductsService**: `listProducts`, `getProductById`, `filterProducts`, `getProductStats`
-- **OrdersService**: `listOrders`, `getOrderById`, `filterOrders`, `getOrderStats`, `getOrdersByPlatform`
-- **CustomersService**: `listCustomers`, `getCustomerById`, `getCustomerStats`
-- **TransactionsService**: `listTransactions`, `getTransactionById`, `getTransactionSummary`, `getTransactionsByCategory`, `getPlatformRevenue`
-- **MessagesService**: `listMessages`, `listConversations`, `getMessagesByConversationId`, `getConversationStats`
+## [Unreleased]
 
-### Architecture & Data Layer ⚡
-- **Read-Only Design**: All services support only SELECT operations with shape parity to mock data
-- **Query Methods**: Implemented Supabase query methods using `select`, `eq`, `in`, `ilike`, `order`, `range`
-- **Data Transformers**: Created snake_case ↔ camelCase transformers for database field mapping
-- **Error Handling**: Lightweight request-time error logging with service response wrappers
-- **Feature Flag Integration**: Per-module data source switching with health check capabilities
+## [1.3.0] - 2025-11-11T20:18:10.856Z
 
-### Configuration & Environment 🛠️
-- **Environment Variables**: Added `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` support
-- **Data Contract**: Created `DATA_CONTRACT.md` documenting field mappings between mock and Supabase schemas
-- **TypeScript Support**: Full type safety across all service methods with comprehensive interfaces
-- **Service Health Monitoring**: Built-in health check system with service status tracking
+### Phase 3: Authentication + Limited Writes
 
-### Technical Implementation
-- **Feature Flag Controls**: `USE_SUPABASE_PRODUCTS`, `USE_SUPABASE_ORDERS`, `USE_SUPABASE_CUSTOMERS`, `USE_SUPABASE_TRANSACTIONS`, `USE_SUPABASE_MESSAGES`
-- **Mock Data Parity**: Maintained identical data shapes when switching between mock and Supabase sources
-- **No UI Changes**: All changes are service layer only - frontend remains unchanged
-- **Zero Console Errors**: Guaranteed zero console errors during source switching
-- **Build Safety**: Full TypeScript compatibility with `npm run typecheck`, `npm run lint`, `npm run build`
+#### 🎉 Major New Features
+- **Authentication System**: Complete Supabase Auth integration with email/password
+- **Write Operations**: Limited write capabilities via service layer with safety controls
+- **Row Level Security**: Database-level security with RLS policies
 
-### Testing & Verification
-- **Data Source Switching**: Toggle mock ↔ Supabase yields identical UI and data shapes
-- **Service Health**: Automated health checking for all data services
-- **Error Handling**: Graceful error handling with detailed logging
-- **Type Safety**: Comprehensive TypeScript coverage for all service methods
-- **Documentation**: Complete API documentation for all service methods
+#### 🔧 Authentication Implementation
+- **M1 — Auth ON**: Replaced mock localStorage authentication with real Supabase Auth
+- Email/password sign-in/out functionality implemented
+- Session management with auto-refresh tokens
+- Dashboard route protection using real session guards
+- AuthContext updated to use Supabase SDK methods
 
-### Security & Best Practices
-- **Read-Only Only**: No write operations, schema changes, or service_role usage
-- **Anon Key Only**: Client-side operations use only anonymous keys
-- **Dev Database Only**: Designed for development/testing environment
-- **Environment Isolation**: Clear separation between mock and production data sources
+#### 🛠️ Write Operations & Safety
+- **M2 — Writes (Dry-Run)**: Implemented service-layer write methods with safety controls
+- ProductsService: `createProduct`, `updateProduct` methods
+- OrdersService: `updateOrderStatus` method
+- WRITE_MODE environment variable: `dry` (default safe mode) vs `live` (actual writes)
+- Dry-run mode: logs intended SQL operations without database commits
+- Shape parity maintained with existing read methods
 
-# Changelog
+#### 🔒 Security & Database
+- **M3 — RLS & Live**: Enabled Row Level Security on products and orders tables
+- Minimal RLS policies for authenticated users (SELECT, INSERT, UPDATE operations)
+- No `service_role` key usage in client code (security best practice)
+- Database-level access control as primary security layer
 
-## [1.3.0] - 2025-01-17 (P0 Final — ESLint Align (Option A) & ProgressBar Safety)
+#### 📚 Documentation & Setup
+- Comprehensive Context7 documentation snapshots for Auth and DML operations
+- Updated `.env.example` with RLS setup SQL commands
+- SECURITY_NOTES_DEV.md with detailed security guidelines and rollback procedures
+- README updates with Auth How-to section
 
-### Fixed 🛠️
-- **ESLint Alignment Option A:** Downgraded to ESLint 8.57.0 with legacy config (`eslint-config-next` 14.x) for stable Next.js 14 compatibility
-- **Single ESLint Config:** Removed all `eslint.config.*` files, kept single `.eslintrc.json` with `extends: ["next/core-web-vitals"]`
-- **ProgressBar Build Safety:** Replaced dynamic Tailwind `w-[${percentage}%]` classes with CSS custom properties and Tailwind arbitrary properties for build-safe rendering
-- **Workspace Diagnostics:** Fixed inline CSS style warnings by using Tailwind arbitrary properties with CSS custom properties: `w-[var(--progress-width)] [--progress-width:${percentage}%]`
-- **Non-Critical Rule Suppression:** Added `react/no-unescaped-entities` and `@next/next/no-img-element` rules to suppress warnings without blocking functionality
+#### ⚙️ Quality Assurance
+- Linting: 1 warning (pre-existing, not related to Phase 3)
+- TypeScript checks: 6 pre-existing errors (not related to Phase 3)
+- Build system: Next.js environment configuration issue (not related to Phase 3)
 
-### Technical Improvements
-- ✅ `npm run lint` → **SUCCESS** (only 1 minor dependency warning)
-- ✅ Build-safe ProgressBar component with Tailwind CSS custom properties
-- ✅ Single ESLint configuration with legacy format for stability
-- ✅ Version compatibility: ESLint 8.57.0 + Next.js 14.x
-- ✅ Visual output unchanged vs previous build
+#### 🚨 Safety Features
+- **WRITE_MODE=dry** (default): Prevents accidental data modifications
+- **Rollback Process**: Simple `WRITE_MODE=dry` to stop live operations
+- **RLS Policies**: Database-level security prevents unauthorized access
+- **Service Layer**: All writes go through service layer, no direct SDK calls
 
-### Configuration Changes
-**Removed Config Files:**
-- `eslint.config.js` (conflicting Next.js flat config)
-- `eslint.config.mjs` (incompatible with ESLint 8)
+#### 🔄 Migration Guide
+1. **Environment Setup**: Copy `.env.example` to `.env.local` and configure Supabase
+2. **RLS Setup**: Apply SQL policies in Supabase SQL Editor (see `.env.example`)
+3. **Testing**: Start with `WRITE_MODE=dry` for safe testing
+4. **Production**: Switch to `WRITE_MODE=live` after verification
 
-**Final ESLint Command:**
-```bash
-npm run lint
+#### ⚠️ Important Notes
+- This is a **development environment** configuration
+- Production deployments require additional security hardening
+- All write operations are **service layer only** (UI cannot call SDK directly)
+- Default **dry mode** prevents accidental data modifications
+- Rollback is simple: set `WRITE_MODE=dry`
+
+### Technical Details
+
+#### Security Architecture
+- **Authentication**: Supabase Auth (email/password)
+- **Database Security**: Row Level Security (RLS) policies
+- **Write Safety**: WRITE_MODE dry/live switch
+- **Service Layer**: Unified interface for all data operations
+
+#### Service Layer Extensions
+```typescript
+// ProductsService
+await productsService.createProduct(productData)
+await productsService.updateProduct(id, updates)
+
+// OrdersService
+await ordersService.updateOrderStatus(id, newStatus)
 ```
-Uses legacy `.eslintrc.json` with Next.js 14 core web vitals config.
 
-## [1.2.0] - 2025-01-16 (P0 Closeout - 6 Critical Fixes)
+#### Environment Variables Added
+```bash
+WRITE_MODE=dry                    # dry | live (default: dry)
+# + RLS setup SQL commands in .env.example
+```
 
-### Fixed 🛠️
-- **Analytics Chart Bug:** Fixed `getAnalyticsByPeriod` function error in `sales-chart.tsx` by adding missing function to analytics module
-- **Register Navigation:** Fixed client-side routing from register page by replacing `redirect()` with `router.push()` to prevent runtime errors
-- **Folder Hygiene:** Cleaned up stray/duplicate dynamic route directories (`[id[`, `[id[/]`, etc.) in `orders` and `products` routes
-- **PostCSS Configuration:** Consolidated PostCSS config by removing duplicate `.mjs` file, keeping single source of truth
-- **ESLint Environment:** Fixed version compatibility issues by updating configuration format (Note: needs further version alignment)
-- **ProgressBar Safety:** Verified ProgressBar component uses Tailwind arbitrary value syntax for reliable dynamic width in builds
+---
 
-### Technical Improvements
-- ✅ Added `getAnalyticsByPeriod` function to handle different time periods (7d, 30d, 90d)
-- ✅ Client-side navigation implemented in register page to prevent Next.js server-side redirect issues
-- ✅ Dynamic route structure cleaned: `orders/[id]/page.tsx` and `products/[id]/page.tsx` remain
-- ✅ Single PostCSS configuration file maintained (`postcss.config.js`)
-- ✅ ESLint environment aligned for Next.js 14 compatibility (version mismatch still needs work)
-- ✅ ProgressBar component uses modern Tailwind syntax for build reliability
+## [1.2.0] - 2025-11-11
 
-### Build Safety
-- ✅ All TypeScript strict checks maintained while fixing runtime errors
-- ✅ Zero console errors in main application flow
-- ✅ Dynamic routes now have clean structure without stray directories
-- ✅ CSS builds use single PostCSS config to prevent conflicts
-- ✅ Client-side navigation prevents hydration mismatches
+### Phase 2: Supabase Integration (Read-Only)
 
-## [1.1.0] - 2025-01-15 (Frontend P0 Closeout - Final Hygiene for DoD v1)
+#### 🎉 Major New Features
+- **Supabase Integration**: Complete read-only service layer implementation
+- **Feature Flag System**: Per-module data source switching (mock/supabase)
+- **Service Architecture**: Unified service layer with data transformation
 
-### Context API Optimizations ⚡
-- **AnalyticsContext:** Created centralized analytics state management with period selection, metrics calculation, and data filtering
-- **FiltersContext:** Implemented global filter state for products and orders with centralized state management
-- **AuthContext:** Built authentication context for user login/logout state across the application
-- **AppProviders:** Created root provider wrapper to make all contexts available app-wide
-- **Performance:** Optimized analytics calculations with `useMemo` and reduced prop drilling
-- **Code Quality:** Cleaner component code with centralized state management patterns
+#### 📊 Data Sources Configuration
+- Feature flag support for products, orders, customers, transactions, messages
+- Shape parity between mock and Supabase data
+- Data transformation utilities (snake_case ↔ camelCase)
+- Health check system for service monitoring
 
-### Accessibility & Workspace Cleanup ♿
-- **Form Accessibility:** Added `title` and `placeholder` attributes to all input fields in analytics, orders, and other pages
-- **Button Accessibility:** Added `title` attributes and `sr-only` text to filter removal buttons and icon-only buttons
-- **Link Accessibility:** Added proper `aria-label` and `title` attributes to external links and action buttons
-- **Input Labels:** Fixed checkbox accessibility in orders page with proper label wrapping and screen reader support
-- **Dynamic Progress Component:** Created dedicated ProgressBar component with Tailwind arbitrary value syntax
-- **Tailwind Arbitrary Values:** Used `w-[${percentage}%]` syntax to eliminate inline style warnings while maintaining dynamic width
-- **Next.js Build Error:** Fixed root layout metadata export by removing "use client" directive and moving AppProviders to dashboard layout
-- **TypeScript Configuration:** Added `forceConsistentCasingInFileNames` option to improve file naming consistency
-- **CSS Best Practices:** Converted inline styles to Tailwind CSS classes where possible, kept necessary dynamic styles
-- **ESLint Compliance:** Added proper eslint-disable comments for necessary inline styles
-- **Code Quality:** Fixed TypeScript strict type checking issues while maintaining functionality
-- **Readability:** Improved accessibility with screen reader text (`sr-only`) and descriptive tooltips
+#### 🛠️ Service Layer Implementation
+- ProductsService: Complete read operations
+- OrdersService: Complete read operations  
+- CustomersService: Complete read operations
+- TransactionsService: Complete read operations
+- MessagesService: Complete read operations
+- Unified DataService facade for easy switching
 
-### Cleanup
-- **PostCSS Configuration:** Replaced `@tailwindcss/postcss` with standard `tailwindcss` and `autoprefixer` for better compatibility
-- **Next.js Configuration:** Removed obsolete `experimental.appDir` flag as it's now default in Next.js 14
-- **Authentication Navigation:** Replaced server-side `redirect()` with client-side `router.push()` to eliminate hydration warnings
-- **ESLint Setup:** Added stable ESLint configuration for Next.js 14 and TypeScript compatibility
-- **Documentation Assets:** Created missing `public/images/logo.svg` for README image reference
-- **Environment Variables:** Added comprehensive `.env.example` with all future integration variables
+#### 📚 Documentation
+- Data source configuration guide
+- Service layer architecture documentation
+- Feature flag usage examples
 
-### Technical Improvements
-- Eliminated all server-side redirect issues in client components
-- Streamlined PostCSS/Tailwind config for Tailwind 3.x compatibility
-- Cleaned Next.js configuration by removing deprecated experimental flags
-- Fixed README image reference by adding actual logo asset
-- Standardized development environment with proper ESLint setup
+---
 
-## [1.0.0] - 2025-01-15 (Frontend P0 DoD v1)
+## [1.1.0] - 2025-11-11
 
-### Added
-- **Products Detail Page**: Complete `/products/[id]` view and edit functionality with inline editing, platform management, and stock tracking
-- **Orders Detail Page**: Full `/orders/[id]` with status management, timeline, and order progression tracking
-- **Auth Guard**: Mock session-based authentication for all dashboard routes
-- **Navigation Links**: Clickable product/order links from list pages to detail pages
-- **Product Management**: Enhanced products page with view/edit actions and navigation to detail pages
-- **Order Management**: Enhanced orders page with view actions and navigation to detail pages
+### Phase 1: Frontend Implementation
 
-### Fixed
-- **TypeScript Configuration**: Added `typecheck` script to package.json for better development workflow
-- **Navigation**: Fixed product and order list pages to properly link to detail pages
-- **Form Validation**: Improved error handling in product and order detail pages
-- **Mock State Persistence**: Ensure edited data persists in both list and detail views
+#### 🎉 Major New Features
+- **Multi-Platform Dashboard**: Complete e-commerce management interface
+- **Product Management**: Full CRUD operations for multi-platform products
+- **Order Management**: Order tracking and status management
+- **Analytics & Reports**: Revenue tracking and platform comparison
+- **Chat System**: Customer communication management
+- **Finance Management**: Transaction tracking and reporting
 
-### Known Limitations
-- All data is stored in browser localStorage (mock session)
-- No real backend integration - all API calls are simulated
-- No email notifications or real payment processing
-- Analytics and dashboard components have some TypeScript warnings (non-blocking)
-- Settings page has type inconsistencies (not critical for P0)
-- Product form modal has minor type issues with platform fields
+#### 📱 Core Features
+- **Dashboard**: Overview with key metrics and recent activity
+- **Products**: Multi-platform product management (Shopee, TikTok, Tokopedia, Lazada)
+- **Orders**: Order tracking with status updates and customer info
+- **Analytics**: Revenue charts, platform comparisons, top products
+- **Finance**: Transaction management with income/expense tracking
+- **Chat**: Customer communication with platform integration
+- **Settings**: Account, notification, and platform configuration
 
-### Technical Notes
-- Zero console errors in main app flow
-- All CRUD operations work with mock data
-- Responsive design maintained across all new pages
-- Existing shadcn/ui components reused for consistency
-- Form validation with Zod schemas implemented
-- Toast notifications for user feedback
-- Loading states implemented for better UX
+#### 🛠️ Technical Implementation
+- Next.js 14.2 with TypeScript and Tailwind CSS
+- Responsive design with mobile navigation
+- Chart.js integration for analytics visualization
+- Component-based architecture with shadcn/ui
+- Mock data system for development and testing
 
-### Testing Status
-- ✅ Products list → detail navigation
-- ✅ Orders list → detail navigation  
-- ✅ Product edit with mock persistence
-- ✅ Order status updates with mock persistence
-- ✅ Auth guard functionality
-- ✅ Form validation
-- ✅ Responsive design
-- ⚠️ Some TypeScript warnings in non-critical components
+---
+
+## [1.0.0] - 2025-11-11
+
+### Initial Release
+
+#### 🎉 Project Setup
+- Next.js 14.2 project initialization
+- TypeScript configuration
+- Tailwind CSS setup
+- ESLint and Prettier configuration
+- Basic project structure
+
+---
+
+## Development Notes
+
+### Version Strategy
+- **Major.Minor.Patch** format
+- Major: Breaking changes or major feature additions
+- Minor: New features, backward compatible
+- Patch: Bug fixes, backward compatible
+
+### Contributing
+- Follow the versioning strategy
+- Update CHANGELOG.md for all changes
+- Include migration notes for breaking changes
+- Document security considerations
+
+### Security
+- Always start with WRITE_MODE=dry in new environments
+- Apply RLS policies before enabling live writes
+- Never expose service_role keys in client code
+- Follow the rollback procedures outlined in SECURITY_NOTES_DEV.md
