@@ -285,6 +285,167 @@ export class ProductsService {
       }
     }
   }
+
+  /**
+   * Create a new product (Phase 3 - Write Operations)
+   */
+  async createProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<ProductServiceResponse<Product>> {
+    const source = featureFlags.products
+    const writeMode = featureFlags.writeMode
+
+    try {
+      // Transform to database format (camelCase to snake_case)
+      const dbProduct = dataTransformers.camelToSnake(productData)
+
+      if (featureFlags.isDryRun()) {
+        console.log(`${this.logPrefix} [DRY-RUN] Would insert product:`, productData)
+        console.log(`${this.logPrefix} [DRY-RUN] SQL: INSERT INTO products (${Object.keys(dbProduct).join(', ')}) VALUES (${Object.values(dbProduct).map(v => `'${v}'`).join(', ')})`)
+        console.log(`${this.logPrefix} [DRY-RUN] Payload:`, dbProduct)
+        
+        // Return success response with mock data (no actual database operation)
+        const mockProduct: Product = {
+          ...productData,
+          id: `mock-${Date.now()}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        
+        return {
+          data: mockProduct,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      }
+
+      // LIVE mode - actual database operation
+      if (featureFlags.useProductsSupabase()) {
+        const { data, error } = await supabase
+          .from(this.tableName)
+          .insert(dbProduct)
+          .select()
+          .single()
+
+        if (error) {
+          throw new Error(`Supabase error: ${error.message}`)
+        }
+
+        // Transform from snake_case to camelCase
+        const transformedProduct = dataTransformers.snakeToCamel(data) as Product
+
+        return {
+          data: transformedProduct,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      } else {
+        // Mock mode - simulate creation
+        const mockProduct: Product = {
+          ...productData,
+          id: `mock-${Date.now()}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+
+        return {
+          data: mockProduct,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      }
+    } catch (error) {
+      console.error(`${this.logPrefix} createProduct error:`, error)
+      return {
+        data: null as any,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        source,
+        timestamp: new Date(),
+      }
+    }
+  }
+
+  /**
+   * Update an existing product (Phase 3 - Write Operations)
+   */
+  async updateProduct(id: string, updates: Partial<Product>): Promise<ProductServiceResponse<Product>> {
+    const source = featureFlags.products
+    const writeMode = featureFlags.writeMode
+
+    try {
+      // Transform to database format (camelCase to snake_case)
+      const dbUpdates = dataTransformers.camelToSnake(updates)
+
+      if (featureFlags.isDryRun()) {
+        console.log(`${this.logPrefix} [DRY-RUN] Would update product ${id}:`, updates)
+        console.log(`${this.logPrefix} [DRY-RUN] SQL: UPDATE products SET ${Object.entries(dbUpdates).map(([key, value]) => `${key} = '${value}'`).join(', ')} WHERE id = '${id}'`)
+        console.log(`${this.logPrefix} [DRY-RUN] Updates:`, dbUpdates)
+        
+        // Return success response with mock data (no actual database operation)
+        const mockProduct: Product = {
+          ...updates as Product,
+          id,
+          updatedAt: new Date(),
+        }
+        
+        return {
+          data: mockProduct,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      }
+
+      // LIVE mode - actual database operation
+      if (featureFlags.useProductsSupabase()) {
+        const { data, error } = await supabase
+          .from(this.tableName)
+          .update(dbUpdates)
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (error) {
+          throw new Error(`Supabase error: ${error.message}`)
+        }
+
+        // Transform from snake_case to camelCase
+        const transformedProduct = dataTransformers.snakeToCamel(data) as Product
+
+        return {
+          data: transformedProduct,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      } else {
+        // Mock mode - simulate update
+        const mockProduct: Product = {
+          ...updates as Product,
+          id,
+          updatedAt: new Date(),
+        }
+
+        return {
+          data: mockProduct,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      }
+    } catch (error) {
+      console.error(`${this.logPrefix} updateProduct error:`, error)
+      return {
+        data: null as any,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        source,
+        timestamp: new Date(),
+      }
+    }
+  }
 }
 
 // Export singleton instance

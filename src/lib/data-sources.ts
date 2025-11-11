@@ -1,8 +1,9 @@
 /**
  * AIOStore Data Sources Configuration
- * 
+ *
  * Manages feature flags for switching between mock data and Supabase data
  * per module (Products, Orders, Customers, Transactions, Messages)
+ * Also manages write mode configuration (dry-run vs live operations)
  */
 
 import { Product, Order, Transaction } from '@/types'
@@ -10,6 +11,7 @@ import { PlatformType } from '@/types/product'
 
 // Data source types
 export type DataSource = 'mock' | 'supabase'
+export type WriteMode = 'dry' | 'live'
 
 // Feature flag configuration
 export interface DataSourceConfig {
@@ -18,6 +20,12 @@ export interface DataSourceConfig {
   customers: DataSource
   transactions: DataSource
   messages: DataSource
+}
+
+// Write mode configuration
+export interface WriteModeConfig {
+  mode: WriteMode
+  description: string
 }
 
 // Default configuration (all mock data)
@@ -29,6 +37,12 @@ const DEFAULT_CONFIG: DataSourceConfig = {
   messages: (process.env.DATA_SOURCE_MESSAGES as DataSource) || 'mock',
 }
 
+// Write mode configuration (default: dry for safety)
+const DEFAULT_WRITE_MODE: WriteModeConfig = {
+  mode: (process.env.WRITE_MODE as WriteMode) || 'dry',
+  description: 'Controls whether write operations are executed or just logged'
+}
+
 // Validate environment variables
 Object.entries(DEFAULT_CONFIG).forEach(([module, source]) => {
   if (source !== 'mock' && source !== 'supabase') {
@@ -36,14 +50,22 @@ Object.entries(DEFAULT_CONFIG).forEach(([module, source]) => {
   }
 })
 
+// Validate write mode
+if (DEFAULT_WRITE_MODE.mode !== 'dry' && DEFAULT_WRITE_MODE.mode !== 'live') {
+  console.warn(`⚠️ Invalid WRITE_MODE: ${DEFAULT_WRITE_MODE.mode}. Using 'dry'.`)
+  DEFAULT_WRITE_MODE.mode = 'dry'
+}
+
 /**
  * Data source configuration instance
  */
 export class DataSourceManager {
   private config: DataSourceConfig
+  private writeMode: WriteModeConfig
 
-  constructor(config: Partial<DataSourceConfig> = {}) {
+  constructor(config: Partial<DataSourceConfig> = {}, writeMode: Partial<WriteModeConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+    this.writeMode = { ...DEFAULT_WRITE_MODE, ...writeMode }
   }
 
   /**
@@ -89,6 +111,44 @@ export class DataSourceManager {
     const newSource = current === 'mock' ? 'supabase' : 'mock'
     this.config[module] = newSource
     return newSource
+  }
+
+  /**
+   * Get current write mode
+   */
+  getWriteMode(): WriteMode {
+    return this.writeMode.mode
+  }
+
+  /**
+   * Check if in dry-run mode
+   */
+  isDryRun(): boolean {
+    return this.writeMode.mode === 'dry'
+  }
+
+  /**
+   * Check if in live mode
+   */
+  isLiveMode(): boolean {
+    return this.writeMode.mode === 'live'
+  }
+
+  /**
+   * Set write mode
+   */
+  setWriteMode(mode: WriteMode): void {
+    this.writeMode.mode = mode
+  }
+
+  /**
+   * Get full configuration including write mode
+   */
+  getFullConfig(): { dataSource: DataSourceConfig; writeMode: WriteModeConfig } {
+    return {
+      dataSource: { ...this.config },
+      writeMode: { ...this.writeMode }
+    }
   }
 
   /**
@@ -161,6 +221,17 @@ export const featureFlags = {
     return dataSourceManager.useMock('messages')
   },
 
+  // Write mode
+  get writeMode(): WriteMode {
+    return dataSourceManager.getWriteMode()
+  },
+  isDryRun(): boolean {
+    return dataSourceManager.isDryRun()
+  },
+  isLiveMode(): boolean {
+    return dataSourceManager.isLiveMode()
+  },
+
   // System-wide checks
   isSupabaseConfigured(): boolean {
     return dataSourceManager.isSupabaseConfigured()
@@ -180,6 +251,7 @@ export function logDataSourceConfig(): void {
   console.log('Customers:', featureFlags.customers)
   console.log('Transactions:', featureFlags.transactions)
   console.log('Messages:', featureFlags.messages)
+  console.log('Write Mode:', featureFlags.writeMode)
   console.log('Supabase Configured:', featureFlags.isSupabaseConfigured() ? '✅' : '❌')
   console.groupEnd()
 }

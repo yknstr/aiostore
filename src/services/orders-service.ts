@@ -413,6 +413,128 @@ export class OrdersService {
       }
     }
   }
+
+  /**
+   * Update order status (Phase 3 - Write Operations)
+   */
+  async updateOrderStatus(id: string, newStatus: OrderStatus): Promise<OrderServiceResponse<Order>> {
+    const source = featureFlags.orders
+    const writeMode = featureFlags.writeMode
+
+    try {
+      // Update payload with new status
+      const updates: Partial<Order> = {
+        orderStatus: newStatus,
+        updatedAt: new Date(),
+      }
+
+      // Add specific timestamps based on status
+      if (newStatus === 'paid' && !updates.paidAt) {
+        updates.paidAt = new Date()
+      }
+      if (newStatus === 'shipped' && !updates.shippedAt) {
+        updates.shippedAt = new Date()
+      }
+      if (newStatus === 'delivered' && !updates.deliveredAt) {
+        updates.deliveredAt = new Date()
+      }
+
+      // Transform to database format (camelCase to snake_case)
+      const dbUpdates = dataTransformers.camelToSnake(updates)
+
+      if (featureFlags.isDryRun()) {
+        console.log(`${this.logPrefix} [DRY-RUN] Would update order status ${id}:`, newStatus)
+        console.log(`${this.logPrefix} [DRY-RUN] SQL: UPDATE orders SET ${Object.entries(dbUpdates).map(([key, value]) => `${key} = '${value}'`).join(', ')} WHERE id = '${id}'`)
+        console.log(`${this.logPrefix} [DRY-RUN] Updates:`, dbUpdates)
+        
+        // Return success response with mock data (no actual database operation)
+        const mockOrder: Order = {
+          id,
+          orderStatus: newStatus,
+          updatedAt: new Date(),
+          // Add timestamp fields if they exist
+          ...(updates.paidAt && { paidAt: updates.paidAt }),
+          ...(updates.shippedAt && { shippedAt: updates.shippedAt }),
+          ...(updates.deliveredAt && { deliveredAt: updates.deliveredAt }),
+        } as Order
+        
+        return {
+          data: mockOrder,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      }
+
+      // LIVE mode - actual database operation
+      if (featureFlags.useOrdersSupabase()) {
+        const { data, error } = await supabase
+          .from(this.tableName)
+          .update(dbUpdates)
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (error) {
+          throw new Error(`Supabase error: ${error.message}`)
+        }
+
+        // Transform from snake_case to camelCase
+        const transformedOrder = dataTransformers.snakeToCamel(data) as Order
+        
+        // Parse JSON fields that are stored as strings in Supabase
+        if (typeof transformedOrder.shippingAddress === 'string') {
+          try {
+            transformedOrder.shippingAddress = JSON.parse(transformedOrder.shippingAddress)
+          } catch {
+            // Keep as string if parsing fails
+          }
+        }
+        
+        if (typeof transformedOrder.items === 'string') {
+          try {
+            transformedOrder.items = JSON.parse(transformedOrder.items)
+          } catch {
+            // Keep as string if parsing fails
+          }
+        }
+
+        return {
+          data: transformedOrder,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      } else {
+        // Mock mode - simulate update
+        const mockOrder: Order = {
+          id,
+          orderStatus: newStatus,
+          updatedAt: new Date(),
+          // Add timestamp fields if they exist
+          ...(updates.paidAt && { paidAt: updates.paidAt }),
+          ...(updates.shippedAt && { shippedAt: updates.shippedAt }),
+          ...(updates.deliveredAt && { deliveredAt: updates.deliveredAt }),
+        } as Order
+
+        return {
+          data: mockOrder,
+          success: true,
+          source,
+          timestamp: new Date(),
+        }
+      }
+    } catch (error) {
+      console.error(`${this.logPrefix} updateOrderStatus error:`, error)
+      return {
+        data: null as any,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        source,
+        timestamp: new Date(),
+      }
+    }
+  }
 }
 
 // Export singleton instance
