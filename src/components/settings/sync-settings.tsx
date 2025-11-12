@@ -169,7 +169,7 @@ export function SyncSettings({}: SyncSettingsProps) {
                 <Checkbox
                   id={option.id}
                   checked={option.checked}
-                  onCheckedChange={option.onChange}
+                  onCheckedChange={(checked) => option.onChange(checked === true)}
                   className="mt-1"
                 />
                 <div className="flex-1">

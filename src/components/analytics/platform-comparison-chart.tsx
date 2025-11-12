@@ -97,9 +97,9 @@ export function PlatformComparisonChart({ data }: PlatformComparisonChartProps) 
           <Legend 
             verticalAlign="bottom" 
             height={36}
-            formatter={(value, entry) => (
+            formatter={(value, entry: any) => (
               <span className="text-sm font-medium capitalize">
-                {value} ({formatCurrency(entry.payload?.revenue || 0)})
+                {value} ({formatCurrency(entry?.payload?.value || 0)})
               </span>
             )}
           />

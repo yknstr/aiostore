@@ -187,7 +187,7 @@ export function NotificationSettings({}: NotificationSettingsProps) {
                 <Checkbox
                   id={event.id}
                   checked={event.checked}
-                  onCheckedChange={event.onChange}
+                  onCheckedChange={(checked) => event.onChange(checked === true)}
                   className="mt-1"
                 />
                 <div className="flex-1">

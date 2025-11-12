@@ -7,7 +7,7 @@ import { OrderStatus } from '@/types/order'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Partial<Record<OrderStatus, string>> = {
   pending: 'bg-yellow-100 text-yellow-800',
   paid: 'bg-blue-100 text-blue-800',
   processing: 'bg-purple-100 text-purple-800',
@@ -98,7 +98,7 @@ export function RecentOrders() {
               </Link>
               <Badge 
                 variant="secondary" 
-                className={`text-xs ${statusColors[order.orderStatus]}`}
+                className={`text-xs ${statusColors[order.orderStatus as OrderStatus] || ''}`}
               >
                 {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
               </Badge>

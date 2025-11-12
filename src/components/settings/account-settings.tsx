@@ -99,7 +99,18 @@ export function AccountSettings({}: AccountSettingsProps) {
     // Simulate save process
     await new Promise(resolve => setTimeout(resolve, 1000))
     
-    setProfileData(data)
+    // Ensure all fields have default values if undefined
+    setProfileData({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      company: data.company || profileData.company,
+      address: data.address || profileData.address,
+      city: data.city || profileData.city,
+      country: data.country || profileData.country,
+      timezone: data.timezone,
+      bio: data.bio || profileData.bio,
+    })
     setIsEditingProfile(false)
     setIsSaving(false)
   }
@@ -364,7 +375,7 @@ export function AccountSettings({}: AccountSettingsProps) {
         </div>
 
         {isChangingPassword && (
-          <form onSubmit={handlePasswordFormSubmit(handlePasswordChange)} className="space-y-4">
+          <form onSubmit={handlePasswordSubmit(handlePasswordChange)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current Password *</Label>
               <Input
