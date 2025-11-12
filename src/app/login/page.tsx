@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +24,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -38,31 +40,26 @@ export default function LoginPage() {
     setIsLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      console.log('Attempting login with email:', data.email)
+      const success = await login(data.email, data.password)
+      console.log('Login result:', success)
       
-      // Mock authentication - any email/password works
-      const userData = {
-        email: data.email,
-        name: 'John Doe',
-        loginTime: new Date().toISOString(),
+      if (success) {
+        toast.success('Login successful! Redirecting to dashboard...')
+        console.log('Redirecting to dashboard...')
+        
+        // Navigate to dashboard
+        setTimeout(() => {
+          console.log('Redirecting to /dashboard')
+          router.push('/dashboard')
+        }, 1000)
+      } else {
+        toast.error('Login failed. Please check your credentials or create an account first.')
       }
-      
-      // Store in localStorage (mock session)
-      localStorage.setItem('aiostore_user', JSON.stringify(userData))
-      if (data.remember) {
-        localStorage.setItem('aiostore_remember', 'true')
-      }
-      
-      toast.success('Login successful! Redirecting to dashboard...')
-      
-      // Navigate to dashboard
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 1000)
       
     } catch (error) {
-      toast.error('Login failed. Please check your credentials.')
+      console.error('Login error:', error)
+      toast.error(`Login failed: ${error instanceof Error ? error.message : 'Please check your credentials'}`)
     } finally {
       setIsLoading(false)
     }
@@ -96,6 +93,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="john@example.com"
+                autoComplete="email"
                 {...register('email')}
                 className={errors.email ? 'border-red-500' : ''}
               />
@@ -111,6 +109,7 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                   {...register('password')}
                   className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
                 />
@@ -170,8 +169,22 @@ export default function LoginPage() {
 
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-600 text-center">
-              <strong>Demo Mode:</strong> Any email and password will work for testing.
+              <strong>Supabase Auth:</strong> Use your registered credentials.
             </p>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              <strong>Demo:</strong> Create an account first, then login with those credentials.
+            </p>
+            <div className="mt-3 text-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/register')}
+                className="text-xs"
+              >
+                Go to Registration
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,6 +30,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
+  const { signUp } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
   const {
@@ -43,27 +45,21 @@ export default function RegisterPage() {
     setIsLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const result = await signUp(data.email, data.password, data.name)
       
-      // Mock registration
-      const userData = {
-        name: data.name,
-        email: data.email,
-        registeredAt: new Date().toISOString(),
+      if (result.error) {
+        toast.error(`Registration failed: ${result.error}`)
+      } else {
+        toast.success('Account created successfully! Redirecting to dashboard...')
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1000)
       }
       
-      // Store in localStorage (mock session)
-      localStorage.setItem('aiostore_user', JSON.stringify(userData))
-      
-      toast.success('Account created successfully! Redirecting to dashboard...')
-      
-      // Redirect to dashboard
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 1000)
-      
     } catch (error) {
+      console.error('Registration error:', error)
       toast.error('Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
@@ -98,6 +94,7 @@ export default function RegisterPage() {
                 id="name"
                 type="text"
                 placeholder="John Doe"
+                autoComplete="name"
                 {...register('name')}
                 className={errors.name ? 'border-red-500' : ''}
               />
@@ -112,6 +109,7 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 placeholder="john@example.com"
+                autoComplete="email"
                 {...register('email')}
                 className={errors.email ? 'border-red-500' : ''}
               />
@@ -127,6 +125,7 @@ export default function RegisterPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Create a strong password"
+                  autoComplete="new-password"
                   {...register('password')}
                   className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
                 />
@@ -150,6 +149,7 @@ export default function RegisterPage() {
                   id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm your password"
+                  autoComplete="new-password"
                   {...register('confirmPassword')}
                   className={errors.confirmPassword ? 'border-red-500 pr-10' : 'pr-10'}
                 />
@@ -196,7 +196,7 @@ export default function RegisterPage() {
 
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-600 text-center">
-              <strong>Demo Mode:</strong> Any information will work for testing.
+              <strong>Supabase Auth:</strong> Create your account using email and password.
             </p>
           </div>
         </CardContent>

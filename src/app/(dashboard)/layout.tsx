@@ -20,6 +20,7 @@ export default function DashboardLayout({
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!isLoading && !isAuthenticated) {
+      console.log('Dashboard: Not authenticated, redirecting to login')
       router.push('/login')
     }
   }, [isLoading, isAuthenticated, router])
@@ -42,32 +43,30 @@ export default function DashboardLayout({
   }
 
   return (
-    <AppProviders>
-      <div className="min-h-screen bg-gray-50">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-          <Sidebar />
-        </div>
-
-        {/* Mobile Navigation */}
-        <MobileNav
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-
-        {/* Main Content */}
-        <div className="lg:pl-64 flex flex-col flex-1">
-          {/* Top Navigation */}
-          <Topbar onMenuClick={() => setSidebarOpen(true)} />
-
-          {/* Page Content */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="p-6">
-              {children}
-            </div>
-          </main>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
+        <Sidebar />
       </div>
-    </AppProviders>
+
+      {/* Mobile Navigation */}
+      <MobileNav
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Main Content */}
+      <div className="lg:pl-64 flex flex-col flex-1">
+        {/* Top Navigation */}
+        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
   )
 }

@@ -16,7 +16,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   isAuthenticated: boolean
-  signUp: (email: string, password: string) => Promise<{ error?: string }>
+  signUp: (email: string, password: string, name?: string) => Promise<{ error?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -81,27 +81,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true)
     try {
+      console.log('[AuthContext] - Starting login process...')
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
+      console.log('[AuthContext] - Supabase response:', { data, error })
+
       if (error) {
-        console.error('Login error:', error.message)
+        console.error('[AuthContext] - Login error:', error.message)
         return false
       }
 
+      console.log('[AuthContext] - Login successful, user will be set via onAuthStateChange')
       // User will be set via onAuthStateChange
       return true
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('[AuthContext] - Login catch error:', error)
       return false
     } finally {
       setIsLoading(false)
     }
   }
 
-  const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
+  const signUp = async (email: string, password: string, name?: string): Promise<{ error?: string }> => {
     setIsLoading(true)
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -109,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         options: {
           data: {
-            full_name: email.split('@')[0] // Use email prefix as default name
+            full_name: name || email.split('@')[0] // Use provided name or email prefix
           }
         }
       })
